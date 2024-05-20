@@ -60,3 +60,5 @@ struct dirent
 	ushort inum;
 	char name[DIRSIZ];
 };
+
+#define NSYMLINKS 10
