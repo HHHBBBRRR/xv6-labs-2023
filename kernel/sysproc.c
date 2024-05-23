@@ -9,83 +9,113 @@
 uint64
 sys_exit(void)
 {
-  int n;
-  argint(0, &n);
-  exit(n);
-  return 0;  // not reached
+	int n;
+	argint(0, &n);
+	exit(n);
+	return 0; // not reached
 }
 
 uint64
 sys_getpid(void)
 {
-  return myproc()->pid;
+	return myproc()->pid;
 }
 
 uint64
 sys_fork(void)
 {
-  return fork();
+	return fork();
 }
 
 uint64
 sys_wait(void)
 {
-  uint64 p;
-  argaddr(0, &p);
-  return wait(p);
+	uint64 p;
+	argaddr(0, &p);
+	return wait(p);
 }
 
 uint64
 sys_sbrk(void)
 {
-  uint64 addr;
-  int n;
+	uint64 addr;
+	int n;
 
-  argint(0, &n);
-  addr = myproc()->sz;
-  if(growproc(n) < 0)
-    return -1;
-  return addr;
+	argint(0, &n);
+	addr = myproc()->sz;
+	if (growproc(n) < 0)
+		return -1;
+	return addr;
 }
 
 uint64
 sys_sleep(void)
 {
-  int n;
-  uint ticks0;
+	int n;
+	uint ticks0;
 
-
-  argint(0, &n);
-  acquire(&tickslock);
-  ticks0 = ticks;
-  while(ticks - ticks0 < n){
-    if(killed(myproc())){
-      release(&tickslock);
-      return -1;
-    }
-    sleep(&ticks, &tickslock);
-  }
-  release(&tickslock);
-  return 0;
+	argint(0, &n);
+	acquire(&tickslock);
+	ticks0 = ticks;
+	while (ticks - ticks0 < n)
+	{
+		if (killed(myproc()))
+		{
+			release(&tickslock);
+			return -1;
+		}
+		sleep(&ticks, &tickslock);
+	}
+	release(&tickslock);
+	return 0;
 }
 
+#define MAXNPAGES 64
 
 #ifdef LAB_PGTBL
-int
-sys_pgaccess(void)
+int sys_pgaccess(void)
 {
-  // lab pgtbl: your code here.
-  return 0;
+	uint64 va;
+	int npages;
+	uint64 addr;
+	uint64 bitmap = 0UL;
+	uint64 idx = 0UL;
+	struct proc *p = myproc();
+
+	argaddr(0, &va);
+	argint(1, &npages);
+	argaddr(2, &addr);
+
+	if (npages > MAXNPAGES)
+	{
+		return -1;
+	}
+
+	for (uint64 page = va; page < va + npages * PGSIZE; page += PGSIZE)
+	{
+		pte_t *pte = walk(p->pagetable, page, 0);
+
+		if (*pte & PTE_A)
+		{
+			bitmap |= 1UL << idx;
+			*pte &= ~PTE_A;
+		}
+		idx++;
+	}
+
+	copyout(p->pagetable, addr, (char *)&bitmap, sizeof(bitmap));
+
+	return 0;
 }
 #endif
 
 uint64
 sys_kill(void)
 {
-  int pid;
+	int pid;
 
-  argint(0, &pid);
-  return kill(pid);
+	argint(0, &pid);
+	return kill(pid);
 }
 
 // return how many clock tick interrupts have occurred
@@ -93,10 +123,10 @@ sys_kill(void)
 uint64
 sys_uptime(void)
 {
-  uint xticks;
+	uint xticks;
 
-  acquire(&tickslock);
-  xticks = ticks;
-  release(&tickslock);
-  return xticks;
+	acquire(&tickslock);
+	xticks = ticks;
+	release(&tickslock);
+	return xticks;
 }
